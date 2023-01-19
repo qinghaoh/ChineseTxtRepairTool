@@ -7,7 +7,7 @@ LICENSE file in the root directory of this source tree.
 """
 
 import argparse
-import re
+import locale
 
 
 def parse():
@@ -19,41 +19,40 @@ def parse():
     return parser.parse_args()
 
 
-def convert_uft8_to_gbk(utf8_chars: str) -> str:
-    utf16_bytes = utf8_chars.encode('utf-16be')
-    # print(type(utf16_bytes))
-    # trims \x00 bytes
-    # e.g. b'\x00\xb8\x00\xfc' -> [b'\xb8', b'\xfc']
-    trimmed_uft16_bytes = bytes(b for b in utf16_bytes)[1::2]
-
+def gbk_encode(input_bytes: bytes) -> str:
     index = 0
-    corrected_chars = ''
-    while index < len(trimmed_uft16_bytes):
+    gbk_encoded_chars = ''
+    while index < len(input_bytes):
         utf16_byte = b''
-
-        if trimmed_uft16_bytes[index] > 127:
-            utf16_byte = trimmed_uft16_bytes[index: index + 2]
+        if input_bytes[index] > 127:
+            utf16_byte = input_bytes[index: index + 2]
             index += 2
         else:
             # preserves ASCII characters
-            utf16_byte = trimmed_uft16_bytes[index].to_bytes(1, 'big')
+            utf16_byte = input_bytes[index].to_bytes(1, 'big')
             index += 1
 
         try:
-            corrected_chars += utf16_byte.decode('gbk')
+            gbk_encoded_chars += utf16_byte.decode('gbk')
         except UnicodeDecodeError:
             # private use area code point
-            corrected_chars += '\ue009'
+            gbk_encoded_chars += '\ue009'
 
-    return corrected_chars
+    return gbk_encoded_chars
 
 
 if __name__ == '__main__':
     args = parse()
 
-    with open(args.infile, mode='r') as infile:
+    input_encoding = locale.getpreferredencoding()
+
+    line_count = 0
+    with open(args.infile, mode='rb') as infile:
         with open(args.outfile, mode="w", encoding='utf-8') as outfile:
             for line in infile:
-                converted_line = ''.join(group if group.isspace() else convert_uft8_to_gbk(group)
-                                         for group in re.split(r'(\s+)', line))
-                outfile.write(converted_line)
+                encoded_line = gbk_encode(line)
+                outfile.write(encoded_line)
+                line_count += 1
+
+    print("Input file encoding: {}".format(input_encoding))
+    print("Number of processed lines: {}".format(line_count))
