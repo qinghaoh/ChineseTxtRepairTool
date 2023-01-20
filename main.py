@@ -7,6 +7,7 @@ LICENSE file in the root directory of this source tree.
 """
 
 import argparse
+import codecs
 import locale
 
 
@@ -19,40 +20,23 @@ def parse():
     return parser.parse_args()
 
 
-def gbk_encode(input_bytes: bytes) -> str:
-    index = 0
-    gbk_encoded_chars = ''
-    while index < len(input_bytes):
-        utf16_byte = b''
-        if input_bytes[index] > 127:
-            utf16_byte = input_bytes[index: index + 2]
-            index += 2
-        else:
-            # preserves ASCII characters
-            utf16_byte = input_bytes[index].to_bytes(1, 'big')
-            index += 1
-
-        try:
-            gbk_encoded_chars += utf16_byte.decode('gbk')
-        except UnicodeDecodeError:
-            # private use area code point
-            gbk_encoded_chars += '\ue009'
-
-    return gbk_encoded_chars
-
-
 if __name__ == '__main__':
     args = parse()
 
     input_encoding = locale.getpreferredencoding()
 
+    # The user-defined error handler is based on the assumption that the input bytes
+    # can be split into UTF-16 units, i.e. pairs of bytes
+    # The error handler 'replace' uses U+FFFD as the official REPLACEMENT CHARACTER
+    # so, we use it here as well.
+    codecs.register_error('utf16replace', lambda exc: ('\ufffd', exc.end + 1))
     line_count = 0
     with open(args.infile, mode='rb') as infile:
         with open(args.outfile, mode="w", encoding='utf-8') as outfile:
             for line in infile:
-                encoded_line = gbk_encode(line)
+                encoded_line = line.decode(encoding='gbk', errors='utf16replace')
                 outfile.write(encoded_line)
                 line_count += 1
 
-    print("Input file encoding: {}".format(input_encoding))
-    print("Number of processed lines: {}".format(line_count))
+    print("Input file encoding: %s" % input_encoding)
+    print("Number of processed lines: %d" % line_count)
