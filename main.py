@@ -12,11 +12,11 @@ import locale
 
 
 def parse():
-    parser = argparse.ArgumentParser(description='Fix corrupted Chinese characters in a file.')
+    parser = argparse.ArgumentParser(description='Fix non-GBK characters in a file.')
     parser.add_argument('--infile', type=str, required=True,
-                        help='path of input file which has corrupted Chinese characters encoded in UTF-16BE')
+                        help='path of input file which has corrupted simplified Chinese characters')
     parser.add_argument('--outfile', type=str, required=True,
-                        help='path of output file which has corrected Chinese characters encoded in GBK')
+                        help='path of output file which has corrected simplified Chinese characters encoded in GBK')
     return parser.parse_args()
 
 
